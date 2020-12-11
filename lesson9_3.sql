@@ -32,6 +32,13 @@ FOR EACH ROW BEGIN
        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='description or name must not empty';
     END IF;
 END //
+DELIMITER //
+CREATE TRIGGER products_update_check BEFORE UPDATE ON products
+FOR EACH ROW BEGIN	
+	IF NEW.name IS NULL AND NEW.description IS NULL THEN
+       SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='description or name must not empty';
+    END IF;
+END //
 
  
  
