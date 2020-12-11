@@ -4,7 +4,7 @@
 DROP FUNCTION IF EXISTS hello;
 DELIMITER //
 CREATE FUNCTION hello()
-RETURNS TEXT DETERMINISTIC
+RETURNS TEXT NO SQL
 BEGIN
 	SET @s="";
 	SELECT DATE_FORMAT(NOW() ,'%H%m') INTO @x;
@@ -28,7 +28,7 @@ DROP TRIGGER products_insert_check;
 DELIMITER //
 CREATE TRIGGER products_insert_check BEFORE INSERT ON products
 FOR EACH ROW BEGIN	
-	IF NEW.name = NULL AND NEW.description=NULL THEN
+	IF NEW.name IS NULL AND NEW.description IS NULL THEN
        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='description or name must not empty';
     END IF;
 END //
