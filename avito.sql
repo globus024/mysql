@@ -235,8 +235,11 @@ CREATE TABLE IF NOT EXISTS announcements_contacts (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT "Время создания строки",  
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT "Время обновления строки",
   FOREIGN KEY announcements_contacts_contact_types_id_fk (contact_types_id) REFERENCES contact_types(id)
-    ON DELETE RESTRICT
+    ON DELETE RESTRICT,
+   FOREIGN KEY announcements_contacts_announcement_id_fk (announcement_id) REFERENCES announcements(id)
+    ON DELETE RESTRICT 
 ) COMMENT "Контакты объявления";
+
 
 -- Таблица типов медиафайлов
 CREATE TABLE IF NOT EXISTS media_types (
@@ -245,7 +248,6 @@ CREATE TABLE IF NOT EXISTS media_types (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT "Время создания строки",  
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT "Время обновления строки"
 ) COMMENT "Типы медиафайлов";
-
 -- Добавляем нужные типы
 INSERT INTO media_types (name) VALUES
   ('photo'),
@@ -259,10 +261,12 @@ CREATE TABLE IF NOT EXISTS announcements_media (
   filename VARCHAR(255) NOT NULL COMMENT "Путь к файлу",
   size INT NOT NULL COMMENT "Размер файла",
   metadata JSON COMMENT "Метаданные файла",
-  media_type_id INT UNSIGNED NOT NULL COMMENT "Ссылка на тип контента",
+  media_type_id BIGINT UNSIGNED NOT NULL COMMENT "Ссылка на тип контента",
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT "Время создания строки",  
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT "Время обновления строки",
   FOREIGN KEY announcements_media_announcement_id_fk (announcement_id) REFERENCES announcements(id)
+    ON DELETE RESTRICT,
+  FOREIGN KEY announcements_media_media_type_id_fk (media_type_id) REFERENCES media_types(id)
     ON DELETE RESTRICT
 ) COMMENT "Медиа файлы объявлений";
 
