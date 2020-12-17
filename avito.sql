@@ -1,7 +1,4 @@
 -- Статус профиля (активный, заблокированный, ...
-DROP DATABASE IF EXISTS avito;
-CREATE DATABASE IF NOT EXISTS avito;
-USE avito;
 
 
 CREATE TABLE IF NOT EXISTS users_active_status(
@@ -18,7 +15,8 @@ CREATE TABLE IF NOT EXISTS users(
 	id SERIAL,	
     email varchar(255),
     password VARCHAR(512),
-    is_auth_social_links  BOOLEAN COMMENT "Авторизация через соц. сети",
+    is_auth_social_links BOOLEAN DEFAULT FALSE COMMENT "Авторизация через соц. сети",
+    is_deleted BOOLEAN DEFAULT FALSE COMMENT "Признак удалёности пользователя",
 	user_active_status_id BIGINT UNSIGNED NOT NULL, -- Статус пользователя (активный, заблокированный, ...)    
     last_entry DATETIME DEFAULT CURRENT_TIMESTAMP,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -44,7 +42,9 @@ INSERT INTO social_net_types (name) VALUES ('ВКонтакте'),('Google'),('�
 
 CREATE TABLE IF NOT EXISTS users_social_net(
 	user_id BIGINT UNSIGNED NOT NULL,	
-    social_net_types_id BIGINT UNSIGNED NOT NULL,    
+    social_net_types_id BIGINT UNSIGNED NOT NULL,
+    attribute_name VARCHAR(255) NOT NULL COMMENT "Наименование атрибута подключенеие по API", 
+    attribute_value VARCHAR(255) NOT NULL COMMENT "Значение атрибута подключенеие по API", 
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
    
@@ -54,9 +54,7 @@ CREATE TABLE IF NOT EXISTS users_social_net(
       ON DELETE RESTRICT,
    FOREIGN KEY users_social_net_social_net_types_id_fk (social_net_types_id) REFERENCES social_net_types(id)
       ON DELETE RESTRICT
-)COMMENT "Справочник городов";
-
-
+)COMMENT "Авторизация пользователя через соц. сети";
 
 CREATE TABLE IF NOT EXISTS users_phones(
 	user_id BIGINT UNSIGNED NOT NULL,	
@@ -157,7 +155,9 @@ CREATE TABLE IF NOT EXISTS categories (
   image_path VARCHAR(512) DEFAULT NULL COMMENT "Путь к картинке категории",
   has_children BOOLEAN DEFAULT FALSE COMMENT "Наличие дочерних категорий", 	
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT "Время создания строки",  
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT "Время обновления строки"  
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT "Время обновления строки",
+  FOREIGN KEY categories_parent_category_id_fk (parent_category_id) REFERENCES categories(id)
+    ON DELETE RESTRICT
 ) COMMENT "Категории объявлений";
 
 -- Свойства тип свойства (Свойтва имеет несколько значений 'MULTI', Значения свойств цифровое 'NUMERIC', значения свойства промежуток 'RANGE', ...)
@@ -215,6 +215,21 @@ CREATE TABLE IF NOT EXISTS announcements (
   FOREIGN KEY announcement_category_id_fk (category_id) REFERENCES categories(id)
     ON DELETE RESTRICT
 ) COMMENT "Объявления";
+
+-- Значения свойств для обявления 
+CREATE TABLE IF NOT EXISTS announcements_properties_values (
+  id SERIAL,
+  announcement_id BIGINT UNSIGNED NOT NULL COMMENT "Ссылка на объявления", 
+  properties_values_id BIGINT UNSIGNED NOT NULL PRIMARY KEY COMMENT "Ссылка на объявления", 
+  option_value VARCHAR(512) COMMENT "Свой вариант выбранного значения для свойства", 
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT "Время создания строки",  
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT "Время обновления строки",   
+  FOREIGN KEY announcements_properties_values_properties_values_id_fk (properties_values_id) REFERENCES properties_values(id)
+    ON DELETE RESTRICT,
+  FOREIGN KEY announcements_properties_values_announcement_id_fk (announcement_id) REFERENCES announcements(id)
+    ON DELETE RESTRICT 
+  
+) COMMENT "Способ связи";
 
 CREATE TABLE IF NOT EXISTS contact_types (
   id SERIAL,   
@@ -282,8 +297,6 @@ CREATE TABLE IF NOT EXISTS announcements_loacations (
     ON DELETE RESTRICT
 ) COMMENT "Место оказания услуг";
 
-
-
 -- Кошелёк пользователя
 CREATE TABLE IF NOT EXISTS users_wallet (
   id SERIAL,	
@@ -295,8 +308,76 @@ CREATE TABLE IF NOT EXISTS users_wallet (
     ON DELETE RESTRICT
 ) COMMENT "Кошелёк пользователя";
 
--- Блок Услуги продвижения
+-- Блок транзакций
 
+-- Тип транзакции (Приход, Расход)
+CREATE TABLE IF NOT EXISTS transaction_in_out (
+  id SERIAL,	
+  name VARCHAR(255) COMMENT "Описание типа транзакции",
+  trans_type VARCHAR(255) COMMENT "Описание типа транзакции виде констатнты(DEBIT, CREDIT)",
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT "Время создания строки",  
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT "Время обновления строки"
+ 
+) COMMENT "Тип транзакции (Приход, Расход)";
+INSERT INTO transaction_in_out (name, trans_type) VALUES ('Приход','DEBIT'),('Расход','CREDIT');
+
+-- Метод пополнения кошелька (Visa card, Master Card, Paypal)
+CREATE TABLE IF NOT EXISTS method_payment_type (
+  id SERIAL,	
+  name VARCHAR(255) COMMENT "Тип пополнения",
+  method_type VARCHAR(255) COMMENT "Описание типа пополнения виде констатнты(VISA, MASTER, PAYPAL)",  
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT "Время создания строки",  
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT "Время обновления строки"
+ 
+) COMMENT "Метод пополнения кошелька";
+
+INSERT INTO method_payment_type (name, method_type) VALUES ('Visa card','VISA'),(' Master Card','MASTER');
+
+-- Детали карты пользователя
+CREATE TABLE IF NOT EXISTS user_incoming_type_info (
+  id SERIAL,	
+  method_payment_type_id BIGINT UNSIGNED NOT NULL COMMENT "Ссылка на тип пополнения",
+  user_id BIGINT UNSIGNED NOT NULL COMMENT "Ссылка на пользователя",
+  info_json JSON COMMENT "Описание карты (Номер карты, дата окончание карты ...)",   
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT "Время создания строки",  
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT "Время обновления строки",
+  FOREIGN KEY user_incoming_type_info_user_id_fk(user_id) REFERENCES users(id)
+    ON DELETE RESTRICT,
+  FOREIGN KEY user_incoming_type_info_method_payment_type_id_fk(method_payment_type_id) REFERENCES method_payment_type(id)
+    ON DELETE RESTRICT  
+ 
+) COMMENT "Детали карты пользователя";
+
+-- Назначения платежа ('Попалнения кошелька, покупка тарифа, пакупка рекламы')
+CREATE TABLE IF NOT EXISTS payment_type (
+  id SERIAL,	
+  name VARCHAR(255) COMMENT "Наменование платежа",  
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT "Время создания строки",  
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT "Время обновления строки" 
+) COMMENT "Назначения платежа";
+
+INSERT INTO payment_type (name) VALUES ('Попалнения кошелька'),('Покупка тарифа');
+-- Транзакции пользователя(Пополнения, списания)
+CREATE TABLE IF NOT EXISTS user_transaction (
+  id SERIAL,	
+  transaction_in_out_id BIGINT UNSIGNED NOT NULL COMMENT "Ссылка на Тип транзакции",
+  user_id BIGINT UNSIGNED NOT NULL COMMENT "Ссылка на пользователя",
+  payment_type_id BIGINT UNSIGNED NOT NULL COMMENT "Ссылка на Назначения платежа",
+  amount FLOAT(15,2) NOT NULL COMMENT "Сумма транзакции",
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT "Время создания строки",  
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT "Время обновления строки",
+  FOREIGN KEY user_incoming_type_info_user_id_fk(user_id) REFERENCES users(id)
+    ON DELETE RESTRICT,
+  FOREIGN KEY user_transaction_transaction_in_out_id_fk(transaction_in_out_id) REFERENCES transaction_in_out(id)
+    ON DELETE RESTRICT,
+  FOREIGN KEY user_transaction_payment_type_id_fk(payment_type_id) REFERENCES payment_type(id)
+    ON DELETE RESTRICT   
+ 
+) COMMENT "Транзакции пользователя";
+
+
+
+-- Блок Услуги продвижения
 CREATE TABLE IF NOT EXISTS promotions_period (
   id SERIAL,	
   name VARCHAR(255) COMMENT "Описание дней продвижения",
@@ -336,6 +417,34 @@ CREATE TABLE IF NOT EXISTS announcements_promotions (
     ON DELETE RESTRICT  
     
 ) COMMENT "Продвижения объявления";
+
+
+-- Блок статистики
+-- Тип статистики (Просмотры, переходы, Показ номера телефона)
+
+CREATE TABLE IF NOT EXISTS stat_type (
+  id SERIAL,	
+  name VARCHAR(255) COMMENT "Описание типа статистики",  
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT "Время создания строки",  
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT "Время обновления строки"
+ 
+) COMMENT "Тип статистики";
+
+INSERT INTO stat_type (name) VALUES ('Просмотры'),('Переходы'),('Показ номера телефона');
+
+-- Статистика объявления 
+CREATE TABLE IF NOT EXISTS announcements_stat ( 	
+  announcement_id BIGINT UNSIGNED NOT NULL COMMENT "Ссылка на объявления", 	
+  stat_type_id BIGINT UNSIGNED NOT NULL COMMENT "Ссылка на объявления",
+  stat_date DATE NOT NULL COMMENT "Дата статистики",
+  PRIMARY KEY(stat_type_id, announcement_id, stat_date),
+  FOREIGN KEY announcements_stat_announcement_id_fk(announcement_id) REFERENCES announcements(id)
+    ON DELETE RESTRICT,
+  FOREIGN KEY announcements_stat_stat_type_id_fk(stat_type_id) REFERENCES stat_type(id)
+    ON DELETE RESTRICT
+) COMMENT "Статистика объявления";
+
+
 
 
 
