@@ -1,6 +1,7 @@
 -- Статус профиля (активный, заблокированный, ...
-
-
+drop database avito;
+create database avito;
+use avito;
 CREATE TABLE IF NOT EXISTS users_active_status(
 	id SERIAL,	
     name varchar(255) UNIQUE,	
@@ -9,7 +10,6 @@ CREATE TABLE IF NOT EXISTS users_active_status(
 )COMMENT "Статус пользовател";
 
 INSERT INTO users_active_status (name) VALUES ('Активный'),('Заблокированный');
-
 
 CREATE TABLE IF NOT EXISTS users(
 	id SERIAL,	
@@ -96,7 +96,7 @@ INSERT INTO cities (name,country_id) VALUES ('Москва',1),('Гусь-Хру
 CREATE TABLE IF NOT EXISTS users_profiles (
   user_id BIGINT UNSIGNED NOT NULL PRIMARY KEY COMMENT "Ссылка на пользователя", 
   username VARCHAR(255),
-  gender CHAR(1) NOT NULL COMMENT "Пол",
+  gender ENUM('f', 'm' ) NOT NULL COMMENT "Пол",
   birthday DATE COMMENT "Дата рождения", 
   photo_path VARCHAR(512),  
   city_id BIGINT UNSIGNED COMMENT "Город проживания",  
@@ -443,6 +443,67 @@ CREATE TABLE IF NOT EXISTS announcements_stat (
   FOREIGN KEY announcements_stat_stat_type_id_fk(stat_type_id) REFERENCES stat_type(id)
     ON DELETE RESTRICT
 ) COMMENT "Статистика объявления";
+-- ----------------------------------------------------------------
+-- Заполняем данными таблицы
+
+INSERT INTO users (email,password, user_active_status_id) VALUES
+('azamat.khankhodjaev@gmail.com', '7dc60393852648f8c02b42165d04c5d3f5279d148d049c37c1e2353df7112528', (SELECT id FROM users_active_status ORDER BY rand() LIMIT 1)),
+('pavel.volya12345678@gmail.com', '234de393852648f8c02b42165d04c5d3f5279d148d049c37c1e2353df7112528', (SELECT id FROM users_active_status ORDER BY rand() LIMIT 1)),
+('abubakar.nurgomedov@gmail.com', 'werty32352648f8c02b42165d04c5d3f5279d148d049c37c1e2353df7112528', (SELECT id FROM users_active_status ORDER BY rand() LIMIT 1)),
+('kashin.olejik@yandex.ru', 'rt45672648f8c02b42165d04c5d3f5279d148d049c37c1e2353df71125ee', (SELECT id FROM users_active_status ORDER BY rand() LIMIT 1)),
+('tumparov.kamil@yandex.ru', 'fg23r672648f8c02b42165d04c5d3f5279d148d049c37c1e2353df7112528', (SELECT id FROM users_active_status ORDER BY rand() LIMIT 1)),
+('noname.noaddress@gmail.com', 'rt23yt56892648f8c02b42165d04c5d3f5279d148d049c37c1e2353df7112yei', (SELECT id FROM users_active_status ORDER BY rand() LIMIT 1)),
+('vasiliy.utkin@mail.ru', 'jh5674912648f8c02b4216gh76c5d3f5279d148d049c37c1e2353df7112552', (SELECT id FROM users_active_status ORDER BY rand() LIMIT 1));
+
+
+INSERT INTO users (email, password, user_active_status_id) select ui.email,ui.password, ui.user_active_status_id 
+from users ui
+	join users u2
+	join users u3
+	join users u4
+	join users u5;
+
+
+TRUNCATE TABLE users_phones;
+drop procedure if exists user_phone_insert_random;
+DELIMITER $$
+CREATE PROCEDURE user_phone_insert_random()
+BEGIN
+  DECLARE i INT DEFAULT 1;  
+  WHILE i < 5000 DO	
+    INSERT INTO users_phones (user_id,phone) VALUES (
+	  i,
+      concat('7496',FLOOR(RAND()*10000000))          
+    );
+    SET i = i + 1;
+  END WHILE;
+END$$
+DELIMITER ;
+CALL user_phone_insert_random();
+/* select concat('7496',FLOOR(RAND()*10000000)) */
+
+TRUNCATE TABLE users_profiles;
+drop procedure if exists users_profiles_insert_random;
+DELIMITER $$
+CREATE PROCEDURE users_profiles_insert_random()
+BEGIN
+  DECLARE i INT DEFAULT 1;  
+  WHILE i < 5000 DO	
+    INSERT INTO users_profiles (user_id,username) VALUES (
+	  FLOOR(RAND()*10000),
+      concat('7496',FLOOR(RAND()*10000000))          
+    );
+    SET i = i + 1;
+  END WHILE;
+END$$
+DELIMITER ;
+CALL user_phone_insert_random();
+
+select FLOOR(RAND()*10000)
+
+
+
+
 
 
 
