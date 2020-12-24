@@ -208,6 +208,8 @@ CREATE TABLE IF NOT EXISTS announcements (
   name VARCHAR(512) NOT NULL COMMENT "Наименование объявления",
   body TEXT NOT NULL  COMMENT "Описание объявления",
   price FLOAT(15,2) NOT NULL COMMENT "Цена",  
+  location_title VARCHAR(255)  COMMENT "Текстовая описания города и страны на карте",
+  location JSON COMMENT "Координаты на карте",  
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT "Время создания строки",  
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT "Время обновления строки",
   FOREIGN KEY announcement_user_id_fk (user_id) REFERENCES users(id)
@@ -216,11 +218,12 @@ CREATE TABLE IF NOT EXISTS announcements (
     ON DELETE RESTRICT
 ) COMMENT "Объявления";
 
--- Значения свойств для обявления 
+-- Значения свойств для обявления выбранные в объявлении 
+DROP TABLE announcements_properties_values;
 CREATE TABLE IF NOT EXISTS announcements_properties_values (
   id SERIAL,
   announcement_id BIGINT UNSIGNED NOT NULL COMMENT "Ссылка на объявления", 
-  properties_values_id BIGINT UNSIGNED NOT NULL PRIMARY KEY COMMENT "Ссылка на объявления", 
+  properties_values_id BIGINT UNSIGNED COMMENT "Ссылка на объявления", 
   option_value VARCHAR(512) COMMENT "Свой вариант выбранного значения для свойства", 
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT "Время создания строки",  
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT "Время обновления строки",   
@@ -229,7 +232,7 @@ CREATE TABLE IF NOT EXISTS announcements_properties_values (
   FOREIGN KEY announcements_properties_values_announcement_id_fk (announcement_id) REFERENCES announcements(id)
     ON DELETE RESTRICT 
   
-) COMMENT "Способ связи";
+) COMMENT "Значения свойств для обявления выбранные в объявлении ";
 
 CREATE TABLE IF NOT EXISTS contact_types (
   id SERIAL,   
@@ -284,18 +287,6 @@ CREATE TABLE IF NOT EXISTS announcements_media (
   FOREIGN KEY announcements_media_media_type_id_fk (media_type_id) REFERENCES media_types(id)
     ON DELETE RESTRICT
 ) COMMENT "Медиа файлы объявлений";
-
--- Место оказания услуг
-CREATE TABLE IF NOT EXISTS announcements_loacations (
-  id SERIAL,	
-  announcement_id BIGINT UNSIGNED NOT NULL COMMENT "Ссылка на объявления", 
-  title VARCHAR(255) NOT NULL COMMENT "Текстовая описания города и страны",
-  location JSON COMMENT "Координаты на карте",  
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT "Время создания строки",  
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT "Время обновления строки",
-  FOREIGN KEY announcements_media_announcement_id_fk (announcement_id) REFERENCES announcements(id)
-    ON DELETE RESTRICT
-) COMMENT "Место оказания услуг";
 
 -- Кошелёк пользователя
 CREATE TABLE IF NOT EXISTS users_wallet (
@@ -433,78 +424,182 @@ CREATE TABLE IF NOT EXISTS stat_type (
 INSERT INTO stat_type (name) VALUES ('Просмотры'),('Переходы'),('Показ номера телефона');
 
 -- Статистика объявления 
+DROP TABLE announcements_stat;
 CREATE TABLE IF NOT EXISTS announcements_stat ( 	
   announcement_id BIGINT UNSIGNED NOT NULL COMMENT "Ссылка на объявления", 	
   stat_type_id BIGINT UNSIGNED NOT NULL COMMENT "Ссылка на объявления",
   stat_date DATE NOT NULL COMMENT "Дата статистики",
+  cnt INT DEFAULT 1 COMMENT "Количество",
   PRIMARY KEY(stat_type_id, announcement_id, stat_date),
   FOREIGN KEY announcements_stat_announcement_id_fk(announcement_id) REFERENCES announcements(id)
     ON DELETE RESTRICT,
   FOREIGN KEY announcements_stat_stat_type_id_fk(stat_type_id) REFERENCES stat_type(id)
     ON DELETE RESTRICT
 ) COMMENT "Статистика объявления";
+
 -- ----------------------------------------------------------------
--- Заполняем данными таблицы
+-- Индексы
+-- ----------------------------------------------------------------
 
-INSERT INTO users (email,password, user_active_status_id) VALUES
-('azamat.khankhodjaev@gmail.com', '7dc60393852648f8c02b42165d04c5d3f5279d148d049c37c1e2353df7112528', (SELECT id FROM users_active_status ORDER BY rand() LIMIT 1)),
-('pavel.volya12345678@gmail.com', '234de393852648f8c02b42165d04c5d3f5279d148d049c37c1e2353df7112528', (SELECT id FROM users_active_status ORDER BY rand() LIMIT 1)),
-('abubakar.nurgomedov@gmail.com', 'werty32352648f8c02b42165d04c5d3f5279d148d049c37c1e2353df7112528', (SELECT id FROM users_active_status ORDER BY rand() LIMIT 1)),
-('kashin.olejik@yandex.ru', 'rt45672648f8c02b42165d04c5d3f5279d148d049c37c1e2353df71125ee', (SELECT id FROM users_active_status ORDER BY rand() LIMIT 1)),
-('tumparov.kamil@yandex.ru', 'fg23r672648f8c02b42165d04c5d3f5279d148d049c37c1e2353df7112528', (SELECT id FROM users_active_status ORDER BY rand() LIMIT 1)),
-('noname.noaddress@gmail.com', 'rt23yt56892648f8c02b42165d04c5d3f5279d148d049c37c1e2353df7112yei', (SELECT id FROM users_active_status ORDER BY rand() LIMIT 1)),
-('vasiliy.utkin@mail.ru', 'jh5674912648f8c02b4216gh76c5d3f5279d148d049c37c1e2353df7112552', (SELECT id FROM users_active_status ORDER BY rand() LIMIT 1));
+/*
+ALTER TABLE announcements_contacts 
+DROP INDEX  announcements_contacts_email_idx ;
+*/
+
+ALTER TABLE announcements 
+ADD INDEX  announcements_name_idx (name ASC);
+
+ALTER TABLE announcements 
+ADD INDEX  announcements_created_at_idx (created_at ASC);
+
+ALTER TABLE announcements 
+ADD INDEX  announcements_updated_at_idx (updated_at ASC);
+
+ALTER TABLE announcements_contacts 
+ADD INDEX  announcements_contacts_email_idx (email ASC);
+
+-- ALTER TABLE announcements_contacts 
+-- DROP INDEX  announcements_contacts_phone_idx ;
+
+ALTER TABLE announcements_contacts 
+ADD INDEX  announcements_contacts_phone_idx (phone ASC);
+
+ALTER TABLE announcements_media 
+ADD INDEX  announcements_media_filename_idx (filename ASC);
+
+ALTER TABLE announcements_media 
+ADD INDEX  announcements_media_size_idx (size ASC);
+
+ALTER TABLE announcements_promotions 
+ADD INDEX  announcements_promotions_start_date_idx (start_date ASC);
+
+ALTER TABLE announcements_properties_values 
+ADD INDEX  announcements_properties_values_option_value_idx (option_value ASC);
+
+ALTER TABLE announcements_stat 
+ADD INDEX  announcements_stat_stat_date_idx (stat_date ASC);
+
+ALTER TABLE categories 
+ADD INDEX  categories_name_idx (name ASC);
+
+ALTER TABLE cities 
+ADD INDEX  cities_name_idx (name ASC);
+
+ALTER TABLE contact_types 
+ADD INDEX  contact_types_name_idx (name ASC);
+
+ALTER TABLE impressions_promotion 
+ADD INDEX  impressions_promotion_name_idx (name ASC);
+
+ALTER TABLE media_types 
+ADD INDEX  media_types_name_idx (name ASC);
+
+ALTER TABLE method_payment_type 
+ADD INDEX  method_payment_type_name_idx (name ASC);
+
+ALTER TABLE notifications 
+ADD INDEX  notifications_title_idx (title ASC);
+
+ALTER TABLE payment_type 
+ADD INDEX  payment_type_name_idx (name ASC);
+
+ALTER TABLE promotions_period 
+ADD INDEX  promotions_period_name_idx (name ASC);
+
+ALTER TABLE properties 
+ADD INDEX  properties_name_idx (name ASC);
+
+ALTER TABLE properties_types 
+ADD INDEX  properties_types_name_idx (name ASC);
+
+ALTER TABLE properties_values 
+ADD INDEX  properties_values_op_value_idx (op_value ASC);
+
+ALTER TABLE user_transaction 
+ADD INDEX  user_transaction_created_at_idx (created_at ASC);
+
+ALTER TABLE users
+ADD INDEX  users_created_at_idx (created_at ASC);
+
+ALTER TABLE users
+ADD INDEX  users_updated_at_idx (updated_at ASC);
+
+ALTER TABLE users
+ADD INDEX  users_last_entry_idx (last_entry ASC);
+
+ALTER TABLE users_notifications
+ADD INDEX  users_notifications_created_at_idx (created_at ASC);
+
+ALTER TABLE users_phones
+ADD INDEX  users_phones_phone_idx (phone ASC);
+
+ALTER TABLE users_profiles
+ADD INDEX  users_profiles_created_at_idx (created_at ASC);
+
+ALTER TABLE users_profiles
+ADD INDEX  users_profiles_updated_at_idx (updated_at ASC);
+
+ALTER TABLE users_profiles
+ADD INDEX  users_birthday_idx (birthday ASC);
+
+ALTER TABLE users_profiles
+ADD INDEX  users_username_idx (username ASC);
+
+ALTER TABLE users_wallet
+ADD INDEX  users_wallet_balance_idx (balance ASC);
+
+-- -----------------------------------------------------------
+-- Представления
+-- -----------------------------------------------------------
+CREATE VIEW  announcement_detail_view as SELECT announcements.id, announcements.name,
+	categories.name as category_name,
+	users_profiles.username as user_name,
+	announcements_contacts.email as announcement_email,
+    announcements_contacts.phone as announcement_phone,
+	DATE_FORMAT(start_date, '%Y-%m-%d') as promotion_start,
+	DATE_ADD(DATE_FORMAT(start_date, '%Y-%m-%d'), INTERVAL day_cnt DAY) as promotion_end_date 
+FROM avito.announcements
+	INNER JOIN users_profiles ON users_profiles.user_id=announcements.user_id
+	INNER JOIN announcements_contacts ON announcements_contacts.announcement_id=announcements.id
+    LEFT JOIN announcements_promotions ON announcements_promotions.announcement_id=announcements.id
+    INNER JOIN categories ON categories.id=announcements.category_id
+    LEFT JOIN promotions_period ON promotions_period.id=announcements_promotions.promotions_period_id;
+
+CREATE VIEW user_information_view as  SELECT 	users.id,  	
+	users_profiles.username,	
+	users_profiles.birthday,
+    FLOOR(DATEDIFF(NOW(), users_profiles.birthday)/365) as age,
+    if(users_profiles.gender="m", "Мужчина","Женщина") as gender,
+    cities.name as city_name,
+    country.name as country_name,
+    users_wallet.balance as user_wallet_balance
+FROM users
+	INNER JOIN users_profiles ON users_profiles.user_id=users.id
+	INNER JOIN cities ON cities.id=users_profiles.city_id
+    INNER JOIN country ON country.id=cities.country_id
+    LEFT JOIN users_wallet ON users_wallet.user_id=users.id    
+ORDER BY users_profiles.username; 
 
 
-INSERT INTO users (email, password, user_active_status_id) select ui.email,ui.password, ui.user_active_status_id 
-from users ui
-	join users u2
-	join users u3
-	join users u4
-	join users u5;
-
-
-TRUNCATE TABLE users_phones;
-drop procedure if exists user_phone_insert_random;
-DELIMITER $$
-CREATE PROCEDURE user_phone_insert_random()
-BEGIN
-  DECLARE i INT DEFAULT 1;  
-  WHILE i < 5000 DO	
-    INSERT INTO users_phones (user_id,phone) VALUES (
-	  i,
-      concat('7496',FLOOR(RAND()*10000000))          
-    );
-    SET i = i + 1;
-  END WHILE;
-END$$
-DELIMITER ;
-CALL user_phone_insert_random();
-/* select concat('7496',FLOOR(RAND()*10000000)) */
-
-TRUNCATE TABLE users_profiles;
-drop procedure if exists users_profiles_insert_random;
-DELIMITER $$
-CREATE PROCEDURE users_profiles_insert_random()
-BEGIN
-  DECLARE i INT DEFAULT 1;  
-  WHILE i < 5000 DO	
-    INSERT INTO users_profiles (user_id,username) VALUES (
-	  FLOOR(RAND()*10000),
-      concat('7496',FLOOR(RAND()*10000000))          
-    );
-    SET i = i + 1;
-  END WHILE;
-END$$
-DELIMITER ;
-CALL user_phone_insert_random();
-
-select FLOOR(RAND()*10000)
-
-
-
-
-
+-- ---------------------------------------------
+-- SELECT
+-- ---------------------------------------------
+SELECT
+	DISTINCT users.id,  users_profiles.username,
+	count( announcements.id) OVER(PARTITION BY announcements.user_id) AS announcements_count,
+    SUM(ut.amount) OVER (PARTITION BY ut.user_id) as all_debit,
+	SUM(ut2.amount) OVER (PARTITION BY ut2.user_id) as all_credit,
+    users_wallet.balance as user_wallet_balance
+FROM users
+	INNER JOIN users_profiles ON users_profiles.user_id=users.id
+	LEFT JOIN user_transaction ut ON ut.user_id=users.id 
+		AND ut.transaction_in_out_id=(SELECT id FROM transaction_in_out WHERE trans_type="DEBIT")
+    LEFT JOIN user_transaction ut2 ON ut2.user_id=users.id 
+		AND ut2.transaction_in_out_id=(SELECT id FROM transaction_in_out WHERE trans_type="CREDIT")    
+	LEFT JOIN announcements ON announcements.user_id=users.id
+    LEFT JOIN users_wallet ON users_wallet.user_id=users.id
+    
+ORDER BY users.id 
 
 
 
